@@ -1,145 +1,4 @@
-// import express from 'express';
-// import Patient from '../models/patient.js';
 
-// const router = express.Router();
-
-// // --- HELPER: CALCULATE HEALTH ---
-// const calculateHealth = (data) => {
-//     let { weight, height, sugar, bpSystolic, bpDiastolic, rbs, temperature } = data;
-
-//     // 1. BMI
-//     const heightInMeters = height / 100;
-//     const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1);
-
-//     let bmiCategory = "";
-//     if (bmi < 18.5) bmiCategory = "Underweight";
-//     else if (bmi >= 18.5 && bmi <= 24.9) bmiCategory = "Normal";
-//     else if (bmi >= 25 && bmi <= 29.9) bmiCategory = "Overweight";
-//     else bmiCategory = "Obese";
-
-//     // 2. Analysis
-//     let sugarStatus = (sugar >= 70 && sugar <= 100) ? "Normal" : (sugar < 70 ? "Low" : "High");
-    
-//     let bpStatus = "Normal";
-//     if (bpSystolic > 140 || bpDiastolic > 90) bpStatus = "High";
-//     else if (bpSystolic < 90 || bpDiastolic < 60) bpStatus = "Low";
-
-//     let rbsStatus = (rbs < 140) ? "Normal" : "High";
-
-//     let tempStatus = (temperature >= 97 && temperature <= 99) ? "Normal" : (temperature > 99 ? "High (Fever)" : "Low");
-
-//     // 3. Overall Status
-//     let healthStatus = "Healthy";
-//     const criticalConditions = [
-//       bmiCategory === "Obese",
-//       sugarStatus !== "Normal", // Simplified for "Critical" check
-//       bpStatus === "High",
-//       rbsStatus === "High",
-//       tempStatus === "High (Fever)"
-//     ];
-    
-//     // Logic: 2+ issues = Critical, 1 issue = Need Attention
-//     let issues = 0;
-//     if(bmiCategory === "Obese" || bmiCategory === "Underweight") issues++;
-//     if(sugarStatus !== "Normal") issues++;
-//     if(bpStatus !== "Normal") issues++;
-//     if(rbsStatus === "High") issues++;
-//     if(tempStatus !== "Normal") issues++;
-
-//     if (issues >= 2) healthStatus = "Critical";
-//     else if (issues === 1) healthStatus = "Need Attention";
-
-//     return {
-//         bmi, bmiCategory, healthStatus,
-//         analysis: { bmiStatus: bmiCategory, sugarStatus, bpStatus, rbsStatus, tempStatus }
-//     };
-// };
-
-// // 1. GET ALL PATIENTS (Dashboard)
-// router.get('/', async (req, res) => {
-//   try {
-//     const patients = await Patient.find().sort({ createdAt: -1 });
-//     // Transform to send only needed info + test count
-//     const dashboardData = patients.map(p => ({
-//         _id: p._id,
-//         name: p.name,
-//         age: p.age,
-//         gender: p.gender,
-//         contact: p.contact,
-//         testCount: p.tests.length,
-//         lastTest: p.tests[p.tests.length - 1]?.date // Optional: show last visit
-//     }));
-//     res.json(dashboardData);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// // 2. GET SINGLE PATIENT (Details + History)
-// router.get('/:id', async (req, res) => {
-//   try {
-//     const patient = await Patient.findById(req.params.id);
-//     if (!patient) return res.status(404).json({ error: 'Patient not found' });
-//     res.json(patient);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// // 3. CREATE PATIENT (Add Patient Page)
-// router.post('/', async (req, res) => {
-//   try {
-//     // Expects: { name, age, gender, contact }
-//     const patient = new Patient({
-//         name: req.body.name,
-//         age: req.body.age,
-//         gender: req.body.gender,
-//         contact: req.body.contact,
-//         tests: []
-//     });
-//     const savedPatient = await patient.save();
-//     res.status(201).json(savedPatient);
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// // 4. ADD TEST RECORD (Patient Details Page)
-// // CHANGED: Path from /:id/test to /:id/tests to match Frontend
-// router.post('/:id/tests', async (req, res) => {
-//   try {
-//     const patient = await Patient.findById(req.params.id);
-//     if (!patient) return res.status(404).json({ error: 'Patient not found' });
-
-//     // Calculate Health Data
-//     const healthData = calculateHealth(req.body);
-
-//     const newTest = {
-//         ...req.body, // weight, height, sugar, etc.
-//         ...healthData,
-//         date: new Date()
-//     };
-
-//     patient.tests.push(newTest);
-//     const updatedPatient = await patient.save();
-    
-//     res.status(201).json(updatedPatient); 
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// // 5. DELETE PATIENT
-// router.delete('/:id', async (req, res) => {
-//   try {
-//     await Patient.findByIdAndDelete(req.params.id);
-//     res.json({ message: 'Patient deleted' });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// export default router;
 
 
 import express from 'express';
@@ -231,85 +90,131 @@ router.post('/', async (req, res) => {
 ------------------------------------------------------ */
 
 router.post('/:id/test', async (req, res) => {
-    try {
-        const patient = await Patient.findById(req.params.id);
-        if (!patient) return res.status(404).json({ error: "Patient not found" });
+    console.log('=== POST /test request ===');
+    console.log('Patient ID:', req.params.id);
+    console.log('Body:', JSON.stringify(req.body));
 
-        const { type, value, value2 } = req.body;
+    const maxRetries = 3;
+    let attempt = 0;
 
-        const newTest = {
-            date: new Date(),
-            type,
-            unit: null
-        };
+    while (attempt < maxRetries) {
+        try {
+            const patient = await Patient.findById(req.params.id);
+            if (!patient) return res.status(404).json({ error: "Patient not found" });
 
-        // ---- Weight Test ----
-        if (type === "weight") {
-            newTest.value = value;
-            newTest.unit = "kg";
-        }
+            const { type, value, value2, sugarType } = req.body;
 
-        // ---- Height Test ----
-        if (type === "height") {
-            newTest.value = value;
-            newTest.unit = "cm";
-        }
+            // Validate required fields
+            if (!type) {
+                return res.status(400).json({ error: "Test type is required" });
+            }
+            if (value === undefined || value === null || value === "") {
+                return res.status(400).json({ error: "Test value is required" });
+            }
 
-        // ---- Sugar Test ----
-        if (type === "sugar") {
-            newTest.value = value;
-            newTest.unit = "mg/dL";
-        }
+            const newTest = {
+                date: new Date(),
+                type,
+                value: parseFloat(value),
+                unit: null
+            };
 
-        // ---- BP Test ----
-        if (type === "bp") {
-            newTest.value = value;      // systolic
-            newTest.value2 = value2;    // diastolic
-            newTest.unit = "mmHg";
-        }
+            // ---- Weight Test ----
+            if (type === "weight") {
+                newTest.unit = "kg";
+            }
 
-        // ------------------------------
-        // PUSH TEST
-        // ------------------------------
-        patient.tests.push(newTest);
+            // ---- Height Test ----
+            else if (type === "height") {
+                newTest.unit = "cm";
+            }
 
-        // ------------------------------
-        // AUTO BMI CALCULATE (LATEST VALUES)
-        // ------------------------------
-        const latestWeight = [...patient.tests].filter(t => t.type === "weight").pop();
-        const latestHeight = [...patient.tests].filter(t => t.type === "height").pop();
+            // ---- Sugar Test ----
+            else if (type === "sugar") {
+                newTest.unit = "mg/dL";
+                newTest.sugarType = sugarType || "Random"; // Add sugar type
+            }
 
-        if (latestWeight && latestHeight) {
-            const bmiValue = calculateBMI(latestWeight.value, latestHeight.value);
-            const bmiCategory = getBMICategory(bmiValue);
+            // ---- BP Test ----
+            else if (type === "bp") {
+                console.log('Processing BP test...');
+                console.log('value (systolic):', value, 'type:', typeof value);
+                console.log('value2 (diastolic):', value2, 'type:', typeof value2);
 
-            // Remove old BMI entries
-            patient.tests = patient.tests.filter(t => t.type !== "bmi");
+                if (!value2 && value2 !== 0) {
+                    console.error('BP validation failed: value2 is missing');
+                    return res.status(400).json({ error: "Diastolic BP value is required" });
+                }
+                newTest.value2 = parseInt(value2);    // diastolic
+                newTest.unit = "mmHg";
+                console.log('BP test created:', JSON.stringify(newTest));
+            }
+            else {
+                console.error('Invalid test type received:', type);
+                return res.status(400).json({ error: "Invalid test type" });
+            }
 
-            // Add new BMI entry
-            patient.tests.push({
-                type: "bmi",
-                value: bmiValue,
-                category: bmiCategory,
-                unit: null,
-                date: new Date()
+            // ------------------------------
+            // PUSH TEST
+            // ------------------------------
+            patient.tests.push(newTest);
+
+            // ------------------------------
+            // AUTO BMI CALCULATE (LATEST VALUES)
+            // ------------------------------
+            const latestWeight = [...patient.tests].filter(t => t.type === "weight").pop();
+            const latestHeight = [...patient.tests].filter(t => t.type === "height").pop();
+
+            if (latestWeight && latestHeight) {
+                const bmiValue = calculateBMI(latestWeight.value, latestHeight.value);
+                const bmiCategory = getBMICategory(bmiValue);
+
+                // Remove old BMI entries
+                patient.tests = patient.tests.filter(t => t.type !== "bmi");
+
+                // Add new BMI entry
+                patient.tests.push({
+                    type: "bmi",
+                    value: bmiValue,
+                    category: bmiCategory,
+                    unit: null,
+                    date: new Date()
+                });
+            }
+
+            // Try to save - this may fail with version conflict
+            await patient.save();
+
+            // FINAL RESPONSE UPDATED (ONLY REQUIRED CHANGE)
+            return res.json({
+                message: "Test added",
+                test: newTest,
+                bmi: latestWeight && latestHeight ? {
+                    value: calculateBMI(latestWeight.value, latestHeight.value),
+                    category: getBMICategory(calculateBMI(latestWeight.value, latestHeight.value))
+                } : null
             });
+
+        } catch (err) {
+            // Check if it's a version conflict error
+            if (err.name === 'VersionError' || (err.message && err.message.includes('version'))) {
+                attempt++;
+                console.log(`Version conflict detected, retry attempt ${attempt}/${maxRetries}`);
+
+                if (attempt >= maxRetries) {
+                    console.error("Max retries reached for version conflict");
+                    return res.status(500).json({ error: "Failed to save test due to concurrent updates. Please try again." });
+                }
+
+                // Wait a bit before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+                continue; // Retry the operation
+            }
+
+            // For other errors, log and return immediately
+            console.error("Error adding test:", err);
+            return res.status(500).json({ error: err.message });
         }
-
-        await patient.save();
-
-        // FINAL RESPONSE UPDATED (ONLY REQUIRED CHANGE)
-        res.json({
-            message: "Test added",
-            test: newTest,
-            bmi: latestWeight && latestHeight ? {
-                value: calculateBMI(latestWeight.value, latestHeight.value),
-                category: getBMICategory(calculateBMI(latestWeight.value, latestHeight.value))
-            } : null
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
     }
 });
 
@@ -343,26 +248,107 @@ router.delete('/:id', async (req, res) => {
 /* -----------------------------------------------------
   7. DOCTOR VERIFICATION
 ------------------------------------------------------ */
+// router.patch('/:id/tests/:testId/verify', async (req, res) => {
+//     console.log('=== PATCH /verify request ===');
+//     console.log('Patient ID:', req.params.id);
+//     console.log('Test ID:', req.params.testId);
+
+//     const maxRetries = 3;
+//     let attempt = 0;
+
+//     while (attempt < maxRetries) {
+//         try {
+//             const patient = await Patient.findById(req.params.id);
+//             if (!patient) {
+//                 console.error('Patient not found:', req.params.id);
+//                 return res.status(404).json({ error: "Patient not found" });
+//             }
+
+//             console.log('Patient found:', patient.name);
+//             console.log('Total tests:', patient.tests.length);
+
+//             const test = patient.tests.id(req.params.testId);
+//             if (!test) {
+//                 console.error('Test not found:', req.params.testId);
+//                 console.log('Available test IDs:', patient.tests.map(t => t._id.toString()));
+//                 return res.status(404).json({ error: "Test not found" });
+//             }
+
+//             console.log('Test found:', test.type, test.value);
+//             console.log('Current verification status:', test.doctorVerification);
+
+//             test.doctorVerification = {
+//                 status: "approved",
+//                 approvedBy: req.body.doctor || "Doctor",
+//                 approvedAt: new Date()
+//             };
+
+//             console.log('Updated verification:', test.doctorVerification);
+//             console.log('Attempting to save patient...');
+
+//             await patient.save();
+
+//             console.log('Patient saved successfully!');
+//             return res.json({ message: "Verified", patient });
+
+//         } catch (err) {
+//             console.error('=== ERROR in PATCH /verify ===');
+//             console.error('Error name:', err.name);
+//             console.error('Error message:', err.message);
+//             console.error('Stack:', err.stack);
+
+//             // Check if it's a version conflict error
+//             if (err.name === 'VersionError' || (err.message && err.message.includes('version'))) {
+//                 attempt++;
+//                 console.log(`Version conflict detected, retry attempt ${attempt}/${maxRetries}`);
+
+//                 if (attempt >= maxRetries) {
+//                     console.error("Max retries reached for version conflict");
+//                     return res.status(500).json({ error: "Failed to verify due to concurrent updates. Please try again." });
+//                 }
+
+//                 await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+//                 continue;
+//             }
+
+//             // For other errors, return immediately
+//             console.error('Returning 500 error to client');
+//             return res.status(500).json({ error: err.message });
+//         }
+//     }
+
+//     // Fallback
+//     console.error('WARNING: While loop exited without return!');
+//     return res.status(500).json({ error: "Unexpected error" });
+// });
+
+
 router.patch('/:id/tests/:testId/verify', async (req, res) => {
     try {
         const patient = await Patient.findById(req.params.id);
-        if (!patient) return res.status(404).json({ error: "Patient not found" });
+        if (!patient) {
+            return res.status(404).json({ error: "Patient not found" });
+        }
 
         const test = patient.tests.id(req.params.testId);
-        if (!test) return res.status(404).json({ error: "Test not found" });
+        if (!test) {
+            return res.status(404).json({ error: "Test not found" });
+        }
 
         test.doctorVerification = {
             status: "approved",
-            approvedBy: req.body.doctor || "Doctor",
+            approvedBy: req.body?.doctor || "Doctor", // ✅ FIXED
             approvedAt: new Date()
         };
 
         await patient.save();
-        res.json({ message: "Verified", patient });
 
+        res.json({ message: "Test verified successfully" });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
+
 
 export default router;

@@ -2,13 +2,14 @@ import mongoose from 'mongoose';
 
 const testSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
-  
+
   // Generic concept (Event Sourcing style)
   type: { type: String, required: true }, // weight, height, sugar, bp, bmi
   value: { type: Number, required: true },
   value2: { type: Number }, // For BP diastolic
   unit: { type: String },
   category: { type: String }, // For BMI result
+  sugarType: { type: String }, // For Sugar test type (Fasting, Random, PPBS)
 
   // Old fields for backward compatibility or if we want to store calculated analysis in the test event?
   // ideally we keep it simple as per new controller logic.
@@ -27,10 +28,10 @@ const patientSchema = new mongoose.Schema({
   gender: { type: String, enum: ['male', 'female'], required: true },
   contact: { type: String, required: true },
   address: { type: String, required: true }, // Added Address
-  
+
   tests: [testSchema]
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
 export default mongoose.model('Patient', patientSchema);
