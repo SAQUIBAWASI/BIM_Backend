@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
 import patientRoutes from './routes/patientRoutes.js';
+import reportRoutes from "./routes/reportRoutes.js";
+
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ connectDB();
 
 // Routes
 app.use('/api/patients', patientRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/', (req, res) => {

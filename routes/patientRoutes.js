@@ -90,132 +90,89 @@ router.post('/', async (req, res) => {
 ------------------------------------------------------ */
 
 router.post('/:id/test', async (req, res) => {
-    console.log('=== POST /test request ===');
-    console.log('Patient ID:', req.params.id);
-    console.log('Body:', JSON.stringify(req.body));
+  try {
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ error: "Patient not found" });
 
-    const maxRetries = 3;
-    let attempt = 0;
+    const { type, value, value2, sugarType } = req.body;
 
-    while (attempt < maxRetries) {
-        try {
-            const patient = await Patient.findById(req.params.id);
-            if (!patient) return res.status(404).json({ error: "Patient not found" });
-
-            const { type, value, value2, sugarType } = req.body;
-
-            // Validate required fields
-            if (!type) {
-                return res.status(400).json({ error: "Test type is required" });
-            }
-            if (value === undefined || value === null || value === "") {
-                return res.status(400).json({ error: "Test value is required" });
-            }
-
-            const newTest = {
-                date: new Date(),
-                type,
-                value: parseFloat(value),
-                unit: null
-            };
-
-            // ---- Weight Test ----
-            if (type === "weight") {
-                newTest.unit = "kg";
-            }
-
-            // ---- Height Test ----
-            else if (type === "height") {
-                newTest.unit = "cm";
-            }
-
-            // ---- Sugar Test ----
-            else if (type === "sugar") {
-                newTest.unit = "mg/dL";
-                newTest.sugarType = sugarType || "Random"; // Add sugar type
-            }
-
-            // ---- BP Test ----
-            else if (type === "bp") {
-                console.log('Processing BP test...');
-                console.log('value (systolic):', value, 'type:', typeof value);
-                console.log('value2 (diastolic):', value2, 'type:', typeof value2);
-
-                if (!value2 && value2 !== 0) {
-                    console.error('BP validation failed: value2 is missing');
-                    return res.status(400).json({ error: "Diastolic BP value is required" });
-                }
-                newTest.value2 = parseInt(value2);    // diastolic
-                newTest.unit = "mmHg";
-                console.log('BP test created:', JSON.stringify(newTest));
-            }
-            else {
-                console.error('Invalid test type received:', type);
-                return res.status(400).json({ error: "Invalid test type" });
-            }
-
-            // ------------------------------
-            // PUSH TEST
-            // ------------------------------
-            patient.tests.push(newTest);
-
-            // ------------------------------
-            // AUTO BMI CALCULATE (LATEST VALUES)
-            // ------------------------------
-            const latestWeight = [...patient.tests].filter(t => t.type === "weight").pop();
-            const latestHeight = [...patient.tests].filter(t => t.type === "height").pop();
-
-            if (latestWeight && latestHeight) {
-                const bmiValue = calculateBMI(latestWeight.value, latestHeight.value);
-                const bmiCategory = getBMICategory(bmiValue);
-
-                // Remove old BMI entries
-                patient.tests = patient.tests.filter(t => t.type !== "bmi");
-
-                // Add new BMI entry
-                patient.tests.push({
-                    type: "bmi",
-                    value: bmiValue,
-                    category: bmiCategory,
-                    unit: null,
-                    date: new Date()
-                });
-            }
-
-            // Try to save - this may fail with version conflict
-            await patient.save();
-
-            // FINAL RESPONSE UPDATED (ONLY REQUIRED CHANGE)
-            return res.json({
-                message: "Test added",
-                test: newTest,
-                bmi: latestWeight && latestHeight ? {
-                    value: calculateBMI(latestWeight.value, latestHeight.value),
-                    category: getBMICategory(calculateBMI(latestWeight.value, latestHeight.value))
-                } : null
-            });
-
-        } catch (err) {
-            // Check if it's a version conflict error
-            if (err.name === 'VersionError' || (err.message && err.message.includes('version'))) {
-                attempt++;
-                console.log(`Version conflict detected, retry attempt ${attempt}/${maxRetries}`);
-
-                if (attempt >= maxRetries) {
-                    console.error("Max retries reached for version conflict");
-                    return res.status(500).json({ error: "Failed to save test due to concurrent updates. Please try again." });
-                }
-
-                // Wait a bit before retrying (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 100 * attempt));
-                continue; // Retry the operation
-            }
-
-            // For other errors, log and return immediately
-            console.error("Error adding test:", err);
-            return res.status(500).json({ error: err.message });
-        }
+    if (!type || value === undefined) {
+      return res.status(400).json({ error: "Invalid test data" });
     }
+
+    // --------------------
+    // SAVE TEST HISTORY
+    // --------------------
+    const newTest = {
+      type,
+      value: parseFloat(value),
+      date: new Date()
+    };
+
+    if (type === "bp") {
+      if (!value2) {
+        return res.status(400).json({ error: "Diastolic value required" });
+      }
+      newTest.value2 = parseInt(value2);
+      newTest.unit = "mmHg";
+    }
+
+    if (type === "weight") newTest.unit = "kg";
+    if (type === "height") newTest.unit = "cm";
+    if (type === "sugar") {
+      newTest.unit = "mg/dL";
+      newTest.sugarType = sugarType || "Random";
+    }
+
+    patient.tests.push(newTest);
+
+    // --------------------
+    // UPDATE CURRENT VITALS ✅
+    // --------------------
+    if (!patient.vitals) patient.vitals = {};
+
+    if (type === "weight") patient.vitals.weight = newTest.value;
+    if (type === "height") patient.vitals.height = newTest.value;
+    if (type === "sugar") {
+      patient.vitals.sugar = newTest.value;
+      patient.vitals.sugarType = newTest.sugarType;
+    }
+    if (type === "bp") {
+      patient.vitals.bpSys = newTest.value;
+      patient.vitals.bpDia = newTest.value2;
+    }
+
+    // --------------------
+    // AUTO BMI (FROM VITALS)
+    // --------------------
+    const { weight, height } = patient.vitals;
+
+    if (weight && height) {
+      const h = height / 100;
+      const bmi = (weight / (h * h)).toFixed(1);
+
+      let category = "Healthy";
+      if (bmi < 18.5) category = "Underweight";
+      else if (bmi >= 25 && bmi < 30) category = "Overweight";
+      else if (bmi >= 30) category = "Obese";
+
+      patient.vitals.bmi = parseFloat(bmi);
+      patient.vitals.bmiCategory = category;
+    }
+
+    patient.vitals.updatedAt = new Date();
+
+    await patient.save();
+
+    res.json({
+      message: "Test added successfully",
+      vitals: patient.vitals
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* -----------------------------------------------------
