@@ -36,8 +36,55 @@
 
 // export default mongoose.model('Patient', patientSchema);
 
+// import mongoose from "mongoose";
+
+// const testSchema = new mongoose.Schema({
+//   type: String,
+//   value: Number,
+//   value2: Number,
+//   sugarType: String,
+//   unit: String,
+//   date: {
+//     type: Date,
+//     default: Date.now
+//   }
+// });
+
+// const patientSchema = new mongoose.Schema(
+//   {
+//     name: String,
+//     age: Number,
+//     gender: String,
+//     contact: String,
+//     address: String,
+
+//     // ✅ CURRENT VALUES (PDF & REPORT yahin se banegi)
+//     vitals: {
+//       weight: Number,
+//       height: Number,
+//       sugar: Number,
+//       sugarType: String,
+//       bpSys: Number,
+//       bpDia: Number,
+//       bmi: Number,
+//       bmiCategory: String,
+//       updatedAt: Date
+//     },
+
+//     // ✅ HISTORY (Recent Entries)
+//     tests: [testSchema]
+//   },
+//   { timestamps: true }
+// );
+
+// export default mongoose.model("Patient", patientSchema);
+
+
 import mongoose from "mongoose";
 
+/* -----------------------------
+   TEST SCHEMA
+----------------------------- */
 const testSchema = new mongoose.Schema({
   type: String,
   value: Number,
@@ -50,6 +97,9 @@ const testSchema = new mongoose.Schema({
   }
 });
 
+/* -----------------------------
+   PATIENT SCHEMA
+----------------------------- */
 const patientSchema = new mongoose.Schema(
   {
     name: String,
@@ -58,7 +108,14 @@ const patientSchema = new mongoose.Schema(
     contact: String,
     address: String,
 
-    // ✅ CURRENT VALUES (PDF & REPORT yahin se banegi)
+    // ✅ CAMP RELATION (IMPORTANT)
+    campId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Camp",
+      required: true
+    },
+
+    // ✅ CURRENT VALUES (PDF / REPORT yahin se)
     vitals: {
       weight: Number,
       height: Number,
@@ -71,7 +128,7 @@ const patientSchema = new mongoose.Schema(
       updatedAt: Date
     },
 
-    // ✅ HISTORY (Recent Entries)
+    // ✅ HISTORY (ALL TEST RECORDS)
     tests: [testSchema]
   },
   { timestamps: true }

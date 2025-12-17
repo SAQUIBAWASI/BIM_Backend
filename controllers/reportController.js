@@ -1,4 +1,4 @@
-import PDFDocument from "pdfkit";
+// import PDFDocument from "pdfkit";
 import Patient from "../models/patient.js";
 
 export const downloadHealthReport = async (req, res) => {

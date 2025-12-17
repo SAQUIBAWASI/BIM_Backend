@@ -2,6 +2,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
+import campRoutes from './routes/campRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
 import reportRoutes from "./routes/reportRoutes.js";
 
@@ -37,7 +38,7 @@ connectDB();
 // Routes
 app.use('/api/patients', patientRoutes);
 app.use('/api/reports', reportRoutes);
-
+app.use('/api/camps', campRoutes);
 // Health check
 app.get('/', (req, res) => {
   res.json({ 
