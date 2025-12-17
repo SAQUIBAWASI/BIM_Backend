@@ -9,7 +9,6 @@ export const downloadHealthReport = async (req, res) => {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    // ===== SAFE DATA =====
     const vitals = patient.vitals || {};
 
     const weight = vitals.weight ?? "-";
@@ -20,7 +19,6 @@ export const downloadHealthReport = async (req, res) => {
     const bmi = vitals.bmi ?? "-";
     const bmiCategory = vitals.bmiCategory ?? "-";
 
-    // ===== PDF =====
     const doc = new PDFDocument({ margin: 40 });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -31,21 +29,16 @@ export const downloadHealthReport = async (req, res) => {
 
     doc.pipe(res);
 
-    // ===== HEADER =====
-    doc
-      .fontSize(18)
-      .text("Health Report", { align: "center" })
-      .moveDown();
+    doc.fontSize(18).text("Health Report", { align: "center" });
+    doc.moveDown();
 
-    doc
-      .fontSize(10)
-      .text(`Report Date: ${new Date().toLocaleString()}`, {
-        align: "right",
-      });
+    doc.fontSize(10).text(
+      `Report Date: ${new Date().toLocaleString()}`,
+      { align: "right" }
+    );
 
     doc.moveDown(2);
 
-    // ===== PATIENT INFO =====
     doc.fontSize(12);
     doc.text(`Patient Name : ${patient.name}`);
     doc.text(`Age : ${patient.age} Years`);
@@ -55,7 +48,6 @@ export const downloadHealthReport = async (req, res) => {
 
     doc.moveDown(2);
 
-    // ===== CLINICAL VITALS =====
     doc.fontSize(14).text("Clinical Vitals");
     doc.moveDown();
 
@@ -67,7 +59,6 @@ export const downloadHealthReport = async (req, res) => {
 
     doc.moveDown(2);
 
-    // ===== BMI =====
     doc.fontSize(14).text("BMI Analysis");
     doc.moveDown();
 
