@@ -107,7 +107,6 @@ const patientSchema = new mongoose.Schema(
     gender: String,
     contact: String,
     address: String,
-
     // ✅ CAMP RELATION (IMPORTANT)
     campId: {
       type: mongoose.Schema.Types.ObjectId,
