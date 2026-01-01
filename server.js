@@ -59,6 +59,8 @@ import { fileURLToPath } from "url";
 import campRoutes from "./routes/campRoutes.js";
 import patientRoutes from "./routes/patientRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import authRoutes from "./routes/authRoutes.js"; // ✅ Import Auth Routes
+import applicationRoutes from "./routes/applicationRoutes.js"; // ✅ Import App Routes
 
 dotenv.config();
 
@@ -130,6 +132,8 @@ console.log("✅ MongoDB connected");
 app.use("/api/patients", patientRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/camps", campRoutes);
+app.use("/api/auth", authRoutes); // ✅ Added Auth Routes
+app.use("/api/applications", applicationRoutes); // ✅ Added App Routes
 
 // =======================
 // Health Check
