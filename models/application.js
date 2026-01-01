@@ -11,6 +11,7 @@ const applicationSchema = new mongoose.Schema(
             required: true,
         },
         message: { type: String }, // Optional message/details
+        campName: { type: String }, // Optional camp name for participation
         status: {
             type: String,
             enum: ["pending", "approved", "rejected"],
